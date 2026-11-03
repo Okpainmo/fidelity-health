@@ -1,0 +1,43 @@
+/**
+ * @description Get the profile of any user
+ * @request GET
+ * @route /api/v1/user/:userId
+ * @access Public
+ */
+import { findUser } from '../lib/user.findUser.service.js';
+import { errorHandler__500, errorHandler__404 } from '../../../utils/errorHandlers/codedErrorHandlers.js';
+import log from '../../../utils/logger.js';
+export const getUserProfile = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const userToFind = await findUser({ userId });
+        if (!userToFind) {
+            errorHandler__404({ errorMessage: 'user not found or does not exist', context: { userId } }, res);
+            return;
+        }
+        const userProfile = {
+            id: userToFind.id,
+            name: userToFind.name || '',
+            email: userToFind.email,
+            isAdmin: userToFind.isAdmin,
+            isActive: userToFind.isActive,
+            createdAt: userToFind.createdAt,
+            updatedAt: userToFind.updatedAt
+        };
+        if (req.userData?.newUserAccessToken && req?.userData?.newUserRefreshToken) {
+            log.info({ level: 'info', userId: userToFind.id, email: userToFind.email }, 'User profile retrieved successfully');
+            res.status(200).json({
+                responseMessage: 'User profile retrieved successfully',
+                response: {
+                    userProfile,
+                    accessToken: req.userData?.newUserAccessToken,
+                    refreshToken: req.userData?.newUserRefreshToken
+                }
+            });
+        }
+    }
+    catch (error) {
+        errorHandler__500(error, res);
+        return;
+    }
+};

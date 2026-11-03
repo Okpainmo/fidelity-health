@@ -1,0 +1,323 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountType {
+  patient
+  hospital
+}
+
+model User {
+  id           Int         @id @default(autoincrement())
+  name         String      @db.VarChar(100)
+  email        String      @unique
+  password     String
+  isAdmin      Boolean     @default(false)
+  isActive     Boolean     @default(true)
+  accountType  AccountType @default(patient)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  accessToken  String?     @default("temp-token")
+  refreshToken String?     @default("temp-refresh-token")
+
+  // Exactly one of these exists, matching accountType. Created at sign-up.
+  patientProfile  PatientProfile?
+  hospitalProfile HospitalProfile?
+
+  missieConversations MissieConversation[]
+}
+
+enum VerificationStatus {
+  pending
+  verified
+  rejected
+}
+
+// Details a patient keeps up to date so hospitals can find and treat them.
+// Mirrors the patient "My profile" page in the client.
+model PatientProfile {
+  id       Int             @id @default(autoincrement())
+  userId   Int             @unique
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Fidelity Health ID patients give at the hospital, e.g. FH-1012-4387.
+  fhId     String          @unique
+  // S3 key of the passport photo (images bucket), if one was uploaded.
+  photoKey String?
+  records  MedicalRecord[]
+
+  // Personal details
+  title             String?
+  firstName         String?
+  middleName        String?
+  lastName          String?
+  preferredName     String?
+  dateOfBirth       DateTime? @db.Date
+  sexAtBirth        String?
+  maritalStatus     String?
+  nationality       String?
+  preferredLanguage String?
+  occupation        String?
+  idType            String?
+  idNumber          String?
+
+  // Contact and address
+  phone        String?
+  altPhone     String?
+  contactEmail String?
+  address1     String?
+  address2     String?
+  city         String?
+  region       String?
+  postalCode   String?
+  country      String?
+
+  // Next of kin and emergency contact
+  kinName               String?
+  kinRelationship       String?
+  kinPhone              String?
+  kinEmail              String?
+  kinAddress            String?
+  emergencySameAsKin    Boolean @default(true)
+  emergencyName         String?
+  emergencyRelationship String?
+  emergencyPhone        String?
+
+  // Insurance and payment
+  paymentType        String?
+  insuranceProvider  String?
+  policyNumber       String?
+  groupNumber        String?
+  policyHolder       String?
+  holderRelationship String?
+  policyExpiry       DateTime? @db.Date
+
+  // Health profile
+  bloodGroup        String?
+  genotype          String?
+  heightCm          Float?
+  weightKg          Float?
+  chronicConditions String[] @default([])
+  otherConditions   String?
+  pastSurgeries     String?
+  familyHistory     String?
+  smoking           String?
+  alcohol           String?
+  disability        String?
+  pregnancy         String?
+
+  // Allergies and medications: lists of { allergen, reaction, severity } and { name, dose, frequency }
+  noKnownAllergies Boolean @default(false)
+  allergies        Json    @default("[]")
+  medications      Json    @default("[]")
+
+  // Missie chat setting: 'direct' (whole reply at once) or 'stream-response' (reply streams in).
+  chatMode String @default("stream-response")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A partner hospital / medical institution's details, used to verify it.
+// Mirrors the institution profile page in the client.
+model HospitalProfile {
+  id                 Int                @id @default(autoincrement())
+  userId             Int                @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Institution ID, e.g. FHI-0012.
+  institutionId      String             @unique
+  verificationStatus VerificationStatus @default(pending)
+  // Set by an admin when verifying or declining the institution.
+  verificationNote   String?
+  verifiedAt         DateTime?
+  records            MedicalRecord[]
+
+  // Institution details (the institution's name is the user's `name`)
+  institutionType String?
+  ownership       String?
+  licenceNumber   String?
+  licenceExpiry   DateTime? @db.Date
+  yearEstablished Int?
+  beds            Int?
+  accreditation   String?
+
+  // Location and contact
+  address1       String?
+  address2       String?
+  city           String?
+  region         String?
+  postalCode     String?
+  country        String?
+  phone          String?
+  emergencyPhone String?
+  contactEmail   String?
+  website        String?
+
+  // Services
+  departments   String[] @default([])
+  otherServices String?
+  emrSystem     String?
+
+  // Records and data protection contacts
+  recordsAdminName  String?
+  recordsAdminRole  String?
+  recordsAdminEmail String?
+  recordsAdminPhone String?
+  dpoName           String?
+  dpoEmail          String?
+  dpoPhone          String?
+
+  // Missie chat setting: 'direct' (whole reply at once) or 'stream-response' (reply streams in).
+  chatMode String @default("stream-response")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Missie (AI assistant) chat
+// ---------------------------------------------------------------------------
+
+enum MissieMessageRole {
+  user
+  missie
+}
+
+// One chat thread between a user and Missie. Maps to /missie/chat/:id in the client.
+model MissieConversation {
+  id       String          @id @default(uuid()) @db.Uuid
+  userId   Int
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Taken from the first message; the user can rename it later.
+  title    String          @db.VarChar(120)
+  messages MissieMessage[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+// A single turn in a conversation, from the user or from Missie.
+model MissieMessage {
+  id             String             @id @default(uuid()) @db.Uuid
+  conversationId String             @db.Uuid
+  conversation   MissieConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MissieMessageRole
+  content        String
+  // The model that wrote Missie's reply. Null for user messages.
+  model          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+enum RecordType {
+  outpatient
+  admission
+  discharge
+  lab
+  imaging
+  prescription
+  immunization
+  surgery
+  referral
+  other
+}
+
+enum RecordStatus {
+  pending
+  verified
+  rejected
+}
+
+// A medical record a partner hospital submits for a registered patient.
+// Starts `pending`; the submitting hospital's records team verifies or rejects it.
+// Patients see their verified and pending records (when visibleToPatient is true).
+model MedicalRecord {
+  id     String @id @default(uuid()) @db.Uuid
+  // Human-friendly reference, shown as FHR-000123.
+  number Int    @unique @default(autoincrement())
+
+  patientProfileId  Int
+  patient           PatientProfile  @relation(fields: [patientProfileId], references: [id], onDelete: Cascade)
+  hospitalProfileId Int
+  hospital          HospitalProfile @relation(fields: [hospitalProfileId], references: [id], onDelete: Cascade)
+
+  // Submission
+  recordType     RecordType
+  department     String
+  officerName    String
+  officerStaffId String
+  submittedOn    DateTime   @db.Date
+
+  // Record details
+  title            String
+  encounterDate    DateTime  @db.Date
+  clinician        String
+  clinicianLicence String?
+  reason           String
+  diagnosis        String?
+  icd10            String?
+  notes            String
+  prescribed       String?
+  newAllergies     String?
+  followUpDate     DateTime? @db.Date
+  followUpNotes    String?
+
+  // Vitals (all optional)
+  bpSystolic   Int?
+  bpDiastolic  Int?
+  pulse        Int?
+  temperatureC Float?
+  spo2         Int?
+  respRate     Int?
+  heightCm     Float?
+  weightKg     Float?
+
+  // Consent and declaration
+  consentMethod    String
+  visibleToPatient Boolean  @default(true)
+  signature        String
+  signedOn         DateTime @db.Date
+
+  // Review by the submitting hospital
+  status     RecordStatus @default(pending)
+  reviewNote String?
+  reviewedAt DateTime?
+
+  attachments RecordAttachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientProfileId])
+  @@index([hospitalProfileId])
+}
+
+// A file attached to a medical record, stored in the S3 files bucket.
+model RecordAttachment {
+  id          String        @id @default(uuid()) @db.Uuid
+  recordId    String        @db.Uuid
+  record      MedicalRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  fileName    String
+  contentType String
+  sizeBytes   Int
+  category    String
+  storageKey  String        @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([recordId])
+}
