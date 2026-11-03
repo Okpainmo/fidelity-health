@@ -1,0 +1,184 @@
+@import 'tailwindcss';
+
+/* Colour tokens: a single teal, used at different strengths.
+   - Solid teal (`accent`) only for primary actions.
+   - Faded teal tints (`accent-soft`, `muted`, `hover`) for highlights,
+     icon tiles and selected states.
+   - Deep teal ink (`accent-ink`) for text on those tints.
+   - Neutrals (text, borders) carry a faint teal cast so everything reads as
+     one colour family.
+   Missie's tokens point at the same teal, kept separate only so the
+   assistant can be restyled later without touching the rest of the app. */
+:root {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #132b29;
+  --sidebar: #f5fafa;
+  --muted: #f1f7f7;
+  --hover: #e6f1f0;
+  --ink-soft: #4b6462;
+  --ink-faint: #86a09d;
+  --line: #deebea;
+
+  --accent: #1b7f79;
+  --accent-hover: #166b66;
+  --accent-foreground: #ffffff;
+  --accent-soft: #e8f4f3;
+  --accent-ink: #1b6863;
+
+  --missie: var(--accent);
+  --missie-hover: var(--accent-hover);
+  --missie-foreground: var(--accent-foreground);
+  --missie-soft: var(--accent-soft);
+  --missie-ink: var(--accent-ink);
+
+  --danger: #dc2626;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-muted: var(--muted);
+  --color-hover: var(--hover);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-missie: var(--missie);
+  --color-missie-hover: var(--missie-hover);
+  --color-missie-foreground: var(--missie-foreground);
+  --color-missie-soft: var(--missie-soft);
+  --color-missie-ink: var(--missie-ink);
+  --color-danger: var(--danger);
+}
+
+/* Fonts are loaded from Google Fonts in index.html. */
+@theme {
+  --font-lato: 'Lato', Arial, Helvetica, sans-serif;
+  --font-poppins: 'Poppins', Arial, Helvetica, sans-serif;
+  --font-nunito-sans: 'Nunito Sans', Arial, Helvetica, sans-serif;
+
+  /* Lato is the default font (Tailwind's `font-sans`). */
+  --font-sans: var(--font-lato);
+}
+
+/* Same class names as vertuex, so markup can be copied across. */
+@layer utilities {
+  .poppins {
+    font-family: var(--font-poppins);
+  }
+
+  .nunito_sans {
+    font-family: var(--font-nunito-sans);
+  }
+
+  .lato {
+    font-family: var(--font-lato);
+  }
+
+  /* Thin, unobtrusive scrollbars for the sidebar and message list. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d9d9d9 transparent;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-lato);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* No focus outline on any form field. */
+input:focus,
+select:focus,
+textarea:focus,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+/* Keyboard focus ring for buttons and links only. */
+:focus-visible:not(input, select, textarea) {
+  outline: 2px solid #1b7f7966;
+  outline-offset: 2px;
+}
+
+/* Syntax highlighting for code in Missie's replies (rehype-highlight /
+   highlight.js classes), in the app's teal and greys. */
+.markdown .hljs-comment,
+.markdown .hljs-quote {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.markdown .hljs-keyword,
+.markdown .hljs-selector-tag,
+.markdown .hljs-built_in,
+.markdown .hljs-meta .hljs-keyword {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.markdown .hljs-string,
+.markdown .hljs-regexp,
+.markdown .hljs-addition,
+.markdown .hljs-template-tag {
+  color: #2f8a7f;
+}
+
+.markdown .hljs-number,
+.markdown .hljs-literal,
+.markdown .hljs-symbol,
+.markdown .hljs-bullet {
+  color: #5b8f8a;
+}
+
+.markdown .hljs-title,
+.markdown .hljs-title.function_,
+.markdown .hljs-section,
+.markdown .hljs-name {
+  color: #0f4f4b;
+  font-weight: 600;
+}
+
+.markdown .hljs-attr,
+.markdown .hljs-attribute,
+.markdown .hljs-variable,
+.markdown .hljs-template-variable,
+.markdown .hljs-property,
+.markdown .hljs-params {
+  color: #3f6f6b;
+}
+
+.markdown .hljs-type,
+.markdown .hljs-class .hljs-title,
+.markdown .hljs-title.class_ {
+  color: #1b7f79;
+}
+
+.markdown .hljs-meta,
+.markdown .hljs-punctuation,
+.markdown .hljs-operator {
+  color: var(--ink-soft);
+}
+
+.markdown .hljs-deletion {
+  color: var(--danger);
+}
+
+.markdown .hljs-emphasis {
+  font-style: italic;
+}
+
+.markdown .hljs-strong {
+  font-weight: 600;
+}
+
