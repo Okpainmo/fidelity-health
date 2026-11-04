@@ -1,8 +1,10 @@
 import { memo } from 'react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import Markdown from 'react-markdown';
-import type { Components, ExtraProps } from 'react-markdown';
+import type { Components, ExtraProps, Options } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 import CopyButton from '../CopyButton';
 
@@ -94,12 +96,16 @@ const components: Components = {
 };
 
 // Renders Missie's markdown replies: GitHub-flavoured markdown (tables, task
-// lists, strikethrough, autolinks) with syntax-highlighted code. Raw HTML in
-// the text is not rendered.
+// lists, strikethrough, autolinks) with syntax-highlighted code. Inline HTML
+// the model sometimes writes (e.g. <br> inside table cells) is rendered too,
+// after sanitising it with GitHub's allow-list (no scripts, styles or handlers).
+// Highlighting runs last so its classes aren't stripped.
+const rehypePlugins = [rehypeRaw, rehypeSanitize, [rehypeHighlight, { detect: true }]] as Options['rehypePlugins'];
+
 function MarkdownContent({ children }: { children: string }): ReactNode {
   return (
     <div className="markdown text-base leading-7 break-words text-foreground">
-      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeHighlight, { detect: true }]]} components={components}>
+      <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={rehypePlugins} components={components}>
         {children}
       </Markdown>
     </div>
